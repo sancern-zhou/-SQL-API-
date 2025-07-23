@@ -693,6 +693,65 @@ def classify_new_error_type(self, error):
 - **最后更新**: 2024-07-20
 - **兼容性**: Python 3.8+
 
+## 📦 Git仓库管理
+
+### 克隆项目
+```bash
+# 克隆仓库到本地
+git clone https://github.com/sancern-zhou/-SQL-API-.git
+cd -SQL-API-
+
+# 激活虚拟环境并安装依赖
+python -m venv venv
+.\venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
+pip install -r requirements.txt
+```
+
+### 日常开发命令
+```bash
+# 查看当前状态
+git status
+
+# 提交代码更改
+git add .
+git commit -m "更新说明"
+git push
+
+# 拉取最新代码
+git pull
+
+# 查看提交历史
+git log --oneline
+```
+
+### 分支管理
+```bash
+# 创建新分支
+git checkout -b feature/new-feature
+
+# 切换分支
+git checkout main
+git checkout feature/new-feature
+
+# 合并分支
+git checkout main
+git merge feature/new-feature
+
+# 删除分支
+git branch -d feature/new-feature
+```
+
+### 版本标签
+```bash
+# 创建版本标签
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+
+# 查看所有标签
+git tag -l
+```
+
 ## 🤝 贡献指南
 
 1. Fork 本仓库
