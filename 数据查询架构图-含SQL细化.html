@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>空气质量数据查询系统 - 查询分流并列架构图</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <style>
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f9f9f9; }
+        .mermaid { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 1.5em; margin: 2em auto; max-width: 1400px; }
+        h1 { text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>空气质量数据查询系统全流程架构图（API/SQL并列-紧凑版）</h1>
+    <div class="mermaid">
+flowchart TD
+    %% 用户入口
+    A["用户查询输入"] --> B["统一查询路由器<br/>src/uqp_router.py"]
+    B --> C1["路由决策引擎<br/>api_priority_engine.py"]
+
+    %% 并列的API和SQL详细流程
+    subgraph 查询分流与详细流程
+        direction LR
+        %% API查询详细流程
+        subgraph "API查询详细流程"
+            D1["外部API处理器<br/>external_api_handler.py"] --> E1["地理位置/分组<br/>smart_geo_extractor.py<br/>geo_level_grouper.py"]
+            E1 --> F1["参数提取<br/>param_extractor.py"]
+            F1 --> G1["参数解析/转换<br/>param_converter.py"]
+            G1 --> H1{"参数完整？"}
+            H1 -- "是" --> I1["API参数构建+请求"]
+            H1 -- "否" --> J1["LLM兜底补全/修正<br/>unified_llm_fallback_manager.py"]
+            J1 --> I1
+            I1 --> K1{"API成功？"}
+            K1 -- "是" --> L1["结果合并/质量验证"]
+            K1 -- "否" --> M1["错误检测/恢复<br/>api_error_classifier.py"]
+            M1 --> N1{"可恢复？"}
+            N1 -- "是" --> J1
+            N1 -- "否" --> S1
+            L1 --> R1["统一响应格式"]
+        end
+
+        %% SQL查询详细流程
+        subgraph "SQL查询详细流程"
+            direction TB
+            S1["SQL主流程入口"] --> S2["RAG语义检索"]
+            S2 --> S3["SQL生成Prompt"]
+            S3 --> S4["LLM生成SQL"]
+            S4 --> S5{"SQL语法校验"}
+            S5 -- "通过" --> S6["数据库连接池"]
+            S6 --> S7["执行SQL"]
+            S7 --> S8{"成功？"}
+            S8 -- "是" --> S9["结果格式化"]
+            S9 --> R1
+            S8 -- "否" --> S10["错误处理/重试"]
+            S10 --> S11{"可恢复？"}
+            S11 -- "是" --> S4
+            S11 -- "否" --> S12["降级兜底/返回错误"]
+            S12 --> R1
+        end
+    end
+
+    C1 -- "API优先" --> D1
+    C1 -- "SQL兜底" --> S1
+
+    R1 --> Z["响应返回用户"]
+    </div>
+</body>
+</html>

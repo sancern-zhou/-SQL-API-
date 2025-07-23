@@ -1,0 +1,26 @@
+llm:
+  model: qwen-plus
+  api_key: your-api-key
+vector_store:
+  path: ./vanna_chroma_db
+
+# MySQL 配置示例 (默认)
+database:
+  host: localhost
+  database: your-database-name
+  user: your-username
+  password: your-password
+  port: 3306
+
+# SQL Server 配置示例 (取消注释以使用)
+# database:
+#   driver: '{ODBC Driver 18 for SQL Server}'  # Windows环境可能是17或18，Linux环境通常是18
+#   server: your-sql-server-ip
+#   database: your-database-name
+#   uid: your-username
+#   pwd: your-password
+#   port: 1433
+#   TrustServerCertificate: 'yes'  # 如果有SSL证书问题，添加此参数
+#   Encrypt: 'yes'                 # 如果有SSL证书问题，添加此参数
+
+execution_mode: direct 

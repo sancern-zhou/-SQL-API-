@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>空气质量数据查询系统 - 紧凑层次架构图</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <style>
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f9f9f9; }
+        .mermaid { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 1.5em; margin: 2em auto; max-width: 1200px; }
+        h1 { text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>空气质量数据查询系统全流程架构图（紧凑层次版）</h1>
+    <div class="mermaid">
+flowchart TD
+    A["用户查询输入"] --> B["统一查询路由器<br/>src/uqp_router.py"]
+    B --> C["路由决策引擎<br/>api_priority_engine.py"]
+
+    C -- "API优先" --> D["外部API处理器<br/>external_api_handler.py"]
+    C -- "SQL兜底" --> S1["SQL查询主流程"]
+
+    %% API查询详细流程（适度并列）
+    D --> E["地理位置/分组<br/>smart_geo_extractor.py<br/>geo_level_grouper.py"]
+    E --> F["参数提取<br/>param_extractor.py"]
+    F --> G1["时间关键词提取"]
+    F --> G2["地理关键词提取"]
+    F --> G3["其他参数提取"]
+    G1 & G2 & G3 --> H["参数解析/转换<br/>param_converter.py"]
+    H --> I{"参数完整？"}
+    I -- "是" --> J["API参数构建+请求"]
+    I -- "否" --> K["LLM兜底补全/修正<br/>unified_llm_fallback_manager.py"]
+    K --> J
+    J --> L{"API成功？"}
+    L -- "是" --> M["结果合并/质量验证"]
+    L -- "否" --> N["错误检测/恢复<br/>api_error_classifier.py"]
+    N --> O{"可恢复？"}
+    O -- "是" --> K
+    O -- "否" --> S1
+    M --> X["统一响应格式"]
+
+    %% SQL查询详细流程（竖直紧凑）
+    S1 --> S2["RAG语义检索"]
+    S2 --> S3["SQL生成Prompt"]
+    S3 --> S4["LLM生成SQL"]
+    S4 --> S5{"SQL语法校验"}
+    S5 -- "通过" --> S6["数据库连接池"]
+    S6 --> S7["执行SQL"]
+    S7 --> S8{"成功？"}
+    S8 -- "是" --> S9["结果格式化"]
+    S9 --> X
+    S8 -- "否" --> S10["错误处理/重试"]
+    S10 --> S11{"可恢复？"}
+    S11 -- "是" --> S4
+    S11 -- "否" --> S12["降级兜底/返回错误"]
+    S12 --> X
+
+    X --> Z["响应返回用户"]
+    </div>
+</body>
+</html>

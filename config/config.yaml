@@ -1,0 +1,81 @@
+﻿# LLM Configuration
+llm:
+  api_key: "sk-6b11fe1b4ed64504990e8ace35f976fb"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  model: "qwen-max-latest"
+  embedding_model: "text-embedding-v2"
+  timeout: 300.0
+  generate_sql_only: false
+
+vector_store:
+  path: "vanna_chroma_db"
+
+# [修改] 将数据库配置改为一个主连接和多个用于训练的连接列表
+database:
+  # 用于执行查询的主连接，通常是业务数据最频繁的库
+  primary_connection:
+    driver: "{ODBC Driver 18 for SQL Server}"
+    server: "10.10.10.135"
+    database: "gd_suncere_product_data_air" # 主业务库 
+    uid: "Develop"
+    pwd: "Dev@996996"
+    port: 1433
+  
+  # 需要纳入模型训练范围的所有数据库的连接信息列表
+  # 系统将分别为每个库建立连接并学习其 schema
+  training_connections:
+    - name: "bsd_db" # 自定义一个名称，用于日志区分
+      driver: "{ODBC Driver 18 for SQL Server}"
+      server: "10.10.10.135"
+      database: "gd_suncere_product_bsd"       # 基础库
+      uid: "Develop"
+      pwd: "Dev@996996"
+      port: 1433
+    - name: "data_air_db"
+      driver: "{ODBC Driver 18 for SQL Server}"
+      server: "10.10.10.135"
+      database: "gd_suncere_product_data_air"  # 联网业务库
+      uid: "Develop"
+      pwd: "Dev@996996"
+      port: 1433
+
+execution_mode: "direct"
+
+# [新增] RAG检索设置，用于控制从向量数据库中召回的各类信息的数量
+rag_settings:
+  n_ddl: 3      # 召回的相关表结构(DDL)数量
+  n_docs: 20    # 召回的相关业务知识/站点信息数量
+  n_sql: 50      # 召回的相似问题SQL范例数量（增加以支持更多站点信息）
+
+# [新增] 模糊匹配设置
+fuzzy_matching:
+  similarity_threshold: 80  # 相似度阈值 (0-100)，用于站点和城市名称的模糊匹配
+
+debug: true  # <--- 在这里添加这一行
+
+# 路由配置 - 已迁移到 routing_config.yaml
+# 原有的关键词检测和路由决策配置已统一迁移到 routing_config.yaml 文件
+# 该配置文件现在只负责基础的系统配置，路由策略配置请查看 routing_config.yaml
+
+# 外部API工具选择配置
+external_api:
+  # 工作流程配置
+  primary_mode: "keyword_matching"      # 优先模式：快速匹配
+  fallback_mode: "llm_analysis"         # 降级模式：大模型分析
+  auto_upgrade_enabled: true            # 快速匹配失败时自动升级到LLM
+  auto_downgrade_enabled: false         # LLM失败时是否降级回快速匹配
+  
+  # 失败判断条件
+  keyword_failure_conditions:
+    - "no_tool_matched"                 # 没有匹配到工具
+    - "parameter_extraction_failed"     # 参数提取失败
+    - "ambiguous_results"               # 结果模糊
+    - "time_precision_insufficient"     # 时间精度不足
+  
+  # 性能配置
+  llm_timeout: 10                       # LLM调用超时时间（秒）
+  retry_attempts: 1                     # LLM调用重试次数
+  
+  # 调试配置
+  force_mode: null                      # 强制模式（null/keyword_matching/llm_analysis）
+

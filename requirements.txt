@@ -1,0 +1,38 @@
+# =================================================
+# Vanna Unified Query System - Dependencies
+# =================================================
+# This file lists the core packages needed to run the application.
+# To set up your environment, follow these steps:
+# 1. (If it exists) Delete the 'venv' folder.
+# 2. Create a new virtual environment: python -m venv venv
+# 3. Activate it: .\\venv\\Scripts\\activate
+# 4. Install dependencies: pip install -r requirements.txt
+# -------------------------------------------------
+
+# -- Core Application Framework --
+flask         # Web server framework for creating the API endpoints.
+pyyaml        # Used for loading the application configuration from config.yaml.
+
+# -- Vanna.AI NL2SQL Engine --
+# The central library for handling Natural Language to SQL conversion,
+# RAG, and vector database interactions. Installing 'vanna' will automatically
+# pull in its required dependencies like 'chromadb', 'pandas', etc.,
+# ensuring compatible versions are used. This is key to fixing the environment issues.
+vanna
+openai                  # Required by the Qianwen (Alibaba) LLM backend used by Vanna.
+chromadb                # The vector database used for RAG (Retrieval-Augmented Generation).
+
+# -- Database Connectivity --
+# Add or remove connectors based on the databases you need to support.
+pyodbc                  # For connecting to Microsoft SQL Server.
+mysql-connector-python  # For connecting to MySQL databases.
+
+# -- API Interaction --
+requests                # For making HTTP requests, often a dependency but good to have explicitly.
+
+# -- Text Processing --
+thefuzz                 # For fuzzy string matching in location name resolution.
+
+# -- Machine Learning --
+scikit-learn            # For vector similarity calculations in intent classification.
+numpy                   # For numerical operations in vector calculations.

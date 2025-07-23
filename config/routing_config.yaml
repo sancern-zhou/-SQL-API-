@@ -1,0 +1,472 @@
+# 统一查询路由配置文件
+# Unified Query Routing Configuration
+
+# 一级路由配置
+primary_routing:
+  strategy: "api_priority"  # api_priority | keyword_vector_hybrid
+  
+  # SQL排除关键词配置
+  sql_exclusion_keywords:
+    # 探索性关键词
+    -   
+    # 排序分析关键词
+    -     
+    # 统计分析关键词（API支持同环比查询）
+           
+    # 时间分析关键词
+    - 
+    -  
+    # 数据探索关键词
+    - "开放式查询"  
+  # 调试和监控配置
+  debug_enabled: true
+  performance_monitoring: true
+  
+  # 备选策略配置（兼容性保留）
+  vector_classifier:
+    enabled: false
+    threshold: 0.3
+    model_type: "tfidf"
+    typical_questions_path: "config/typical_questions.json"
+
+# 二级路由配置
+secondary_routing:
+  tool_selection:
+    primary_method: "keyword_matching"
+    fallback_method: "llm_analysis"
+    auto_upgrade: true
+    
+  # 当前策略：基于对比关键词的简单匹配
+  # 策略逻辑：检测到对比关键词 → 对比报表，否则 → 综合报表（默认）
+  keyword_matching:
+    strategy: "comparison_keywords_only"
+    description: "只检查对比关键词，未匹配时默认选择综合报表"
+    
+    # 对比关键词列表（精简为2个明确关键词）
+    comparison_keywords:
+      # 明确的时间对比关键词
+      - "环比"
+      - "同比"
+      # 移除模糊关键词: "同期"（可能导致误判）
+     
+    # 工具选择规则
+    tool_selection_rules:
+      get_comparison_report: 
+        condition: "匹配到任一对比关键词"
+        keywords: "使用上述comparison_keywords列表"
+      get_summary_report: 
+        condition: "未匹配到对比关键词（默认选择）"
+        keywords: "无需专门关键词，作为默认选择"
+        
+  llm_analysis:
+    timeout: 10
+    retry_attempts: 2
+    model_fallback_enabled: true
+    
+
+# 参数提取配置 - 统一管理所有正则模式和关键词
+parameter_extraction:
+  # 多层级地理位置处理配置 (新增)
+  multi_level_processing:
+    enabled: true
+    description: "启用多层级地理位置统一处理机制"
+    confidence_threshold: 70
+    max_levels_per_query: 10
+    level_priority:
+      - "站点"
+      - "区县" 
+      - "城市"
+    automatic_grouping: true
+    smart_geo_extractor:
+      fuzzy_matching: true
+      geo_mappings_path: "config/geo_mappings.json"
+  # 时间提取模式（增强版 - 按特异性优先级排序）
+  time_patterns:
+    # === 现有模式（保持不变）===
+    - pattern: "(\\d{4}年\\d{1,2}月\\d{1,2}日)"
+      description: "完整日期"
+      priority: 1
+      enabled: true
+    - pattern: "(\\d{4}年\\d{1,2}月)"
+      description: "年月"
+      priority: 2
+      enabled: true
+    - pattern: "(\\d{1,2}月\\d{1,2}日)"
+      description: "月日"
+      priority: 3
+      enabled: true
+    - pattern: "(上周|上个月|昨天|今天|本周|本月|今年|去年)"
+      description: "相对时间"
+      priority: 4
+      enabled: true
+      
+    # === 新增高频时间模式 ===
+    - pattern: "(上半年)"
+      description: "上半年"
+      priority: 5
+      enabled: true
+    - pattern: "(下半年)"
+      description: "下半年"
+      priority: 6
+      enabled: true
+    - pattern: "(第[一二三四1234]季度)"
+      description: "季度表达"
+      priority: 7
+      enabled: true
+    - pattern: "(最近\\d+天)"
+      description: "最近N天"
+      priority: 8
+      enabled: true
+    - pattern: "(过去\\d+天)"
+      description: "过去N天"
+      priority: 9
+      enabled: true
+    - pattern: "(\\d+天前)"
+      description: "N天前"
+      priority: 10
+      enabled: true
+    - pattern: "(\\d{4}年)"
+      description: "年份（较一般）"
+      priority: 11
+      enabled: true
+    - pattern: "(\\d{1,2}月)"
+      description: "月份（最一般）"
+      priority: 12
+      enabled: true
+      
+  # 对比时间模式
+  comparison_time_patterns:
+    - pattern: "(?:和|与|跟|同|相比|对比)\\s*([^，,。.！!？?\\s]*(?:年|月|周|天|同期|上年|去年))"
+      description: "对比时间提取模式"
+      enabled: true
+    
+     
+  # 数据源关键词
+  data_source_keywords:
+    原始实况: ["原始实况", "原始数据"]
+    审核实况: ["审核实况", "审核数据", "实况"]
+    
+
+# 时间解析配置 - 完整的时间解析规则配置
+time_parsing_extended:
+  # === 第一优先级：核心业务时间（必须100%支持）===
+  # 当前时间系列
+  current_time_expressions:
+    today: ["今天", "今日", "当天", "today"]
+    this_week: ["本周", "这周", "当周", "this week"]
+    this_month: ["本月", "这个月", "当月", "this month"]
+    this_year: ["今年", "这一年", "当年", "this year"]
+  
+  # 历史时间系列（最常用）
+  historical_time_expressions:
+    yesterday: ["昨天", "yesterday"]
+    days_ago: ["前天", "大前天"]  # 对应2天前、3天前
+    last_week: ["上周", "上一周", "前一周", "last week"]
+    last_month: ["上个月", "上一个月", "前一个月", "last month"]
+    last_year: ["去年", "上一年", "前一年", "last year"]
+  
+  # === 第二优先级：范围时间表达式（常用）===
+  range_time_expressions:
+    recent_days: "最近(\\d+)天"      # 最近N天
+    past_days: "过去(\\d+)天"        # 过去N天
+    
+  # === 第三优先级：月份表达式===
+  month_expressions:
+    month_only: "(\\d{1,2})月$"      # N月
+    
+  # === 第四优先级：季度表达式（增强版）===
+  quarter_expressions:
+    this_quarter: ["本季度", "这个季度", "当前季度"]
+    last_quarter: ["上季度", "上个季度", "前一季度"]
+    
+  # === 新增：半年和季度表达式（增强版）===
+  enhanced_time_expressions:
+    # 半年表达式
+    half_year_expressions:
+      first_half:
+        keywords: ["上半年"]
+        months: [1, 2, 3, 4, 5, 6]
+        description: "上半年对应1-6月"
+      second_half:
+        keywords: ["下半年"]
+        months: [7, 8, 9, 10, 11, 12]
+        description: "下半年对应7-12月"
+        
+    # 增强季度表达式
+    enhanced_quarter_expressions:
+      q1:
+        keywords: ["第一季度", "一季度", "1季度"]
+        months: [1, 2, 3]
+        description: "第一季度对应1-3月"
+      q2:
+        keywords: ["第二季度", "二季度", "2季度"]
+        months: [4, 5, 6]
+        description: "第二季度对应4-6月"
+      q3:
+        keywords: ["第三季度", "三季度", "3季度"]
+        months: [7, 8, 9]
+        description: "第三季度对应7-9月"
+      q4:
+        keywords: ["第四季度", "四季度", "4季度"]
+        months: [10, 11, 12]
+        description: "第四季度对应10-12月"
+    
+  # === 第五优先级：绝对时间表达式===
+  absolute_time_expressions:
+    full_date: "(\\d{4})年(\\d{1,2})月(\\d{1,2})日"    # YYYY年MM月DD日
+    year_month: "(\\d{4})年(\\d{1,2})月"               # YYYY年MM月
+    year_only: "(\\d{4})年"                          # YYYY年
+    
+  # === 第六优先级：API格式日期===
+  api_format_expressions:
+    api_date: "(\\d{4})-(\\d{1,2})-(\\d{1,2})"       # YYYY-MM-DD
+    api_month: "(\\d{4})-(\\d{1,2})"                 # YYYY-MM
+    
+   
+  # === 对比时间表达式（用于同比环比分析）===
+  comparison_time_expressions:
+    # 环比 - 与上一个周期比较
+    period_comparison:
+      keywords: ["环比"]
+      description: "与上一个相同周期比较"
+      
+    # 同比 - 与去年同期比较  
+    year_comparison:
+      keywords: ["同比", "同期"]
+      description: "与去年同期比较"
+    
+  # === 时间解析处理规则===
+  parsing_rules:
+    # 处理优先级（数字越小优先级越高）
+    priority_order:
+      1: "current_time_expressions"
+      2: "historical_time_expressions" 
+      3: "range_time_expressions"
+      4: "quarter_expressions"
+      5: "absolute_time_expressions"
+      6: "api_format_expressions"
+      7: "month_expressions"
+      
+    # 时间计算规则
+    calculation_rules:
+      days_ago_mapping:
+        "前天": 2
+        "大前天": 3
+      
+      quarter_months:
+        1: [1, 2, 3]    # Q1: 1-3月
+        2: [4, 5, 6]    # Q2: 4-6月
+        3: [7, 8, 9]    # Q3: 7-9月
+        4: [10, 11, 12] # Q4: 10-12月
+        
+      week_start_day: 0  # 0=周一, 6=周日
+      
+    # 时间格式化规则
+    output_format:
+      datetime_format: "%Y-%m-%d %H:%M:%S"
+      start_time_suffix: " 00:00:00"
+      end_time_suffix: " 23:59:59"
+      
+    # 错误处理规则
+    error_handling:
+      invalid_date_message: "无效的日期: {date_desc}"
+      invalid_month_message: "无效的月份: {month}"
+      invalid_year_message: "无效的年份: {year}"
+      parsing_error_message: "时间解析出错: {error}"
+      unknown_expression_message: "无法解析的时间描述: '{time_desc}'"
+      
+  # 调试配置
+  debug_settings:
+    enable_trace_logging: true
+    log_prefix: "[TIME_PARSE]"
+    log_successful_matches: true
+    log_failed_matches: true
+
+# 地理位置配置 - 扩展原有配置
+geo_location_extended:
+  # 模糊匹配配置
+  fuzzy_matching:
+    # 多结果返回配置
+    multi_result_config:
+      max_results: 100            # 最大返回结果数量（移除限制以支持所有站点）
+      min_confidence_threshold: 70  # 最小置信度阈值
+      enable_type_annotation: true  # 是否标注地理位置类型
+      enable_confidence_info: true  # 是否返回置信度信息
+  
+  # 地理位置映射配置
+  geo_mappings:
+    path: "config/geo_mappings.json"
+    enabled: true
+
+# 参数去重配置
+parameter_deduplication:
+  # 时间精度评分
+  time_precision_scores:
+    absolute_date: 100
+    absolute_month: 80
+    relative_recent: 60
+    relative_general: 40
+    vague: 20
+    
+  # 时间精度识别模式
+  time_precision_patterns:
+    absolute_date: "\\d{4}年\\d{1,2}月\\d{1,2}日"
+    absolute_month: "\\d{4}年\\d{1,2}月"
+    relative_recent: "上周|上个月|上季度|去年"
+    relative_general: "今天|昨天|本周|本月"
+
+# 监控和日志配置
+monitoring:
+  enabled: true
+  log_level: "INFO"
+  
+  # 性能指标配置
+  performance_metrics:
+    track_response_time: true
+    track_route_distribution: true
+    track_keyword_matches: true
+    track_success_rate: true
+    
+  # 决策链追踪配置
+  decision_tracing:
+    enabled: true
+    max_trace_buffer_size: 1000
+    trace_retention_hours: 24
+    
+  # 统计报告配置
+  statistics_reporting:
+    enabled: true
+    report_interval_minutes: 60
+    export_format: "json"
+    export_path: "logs/routing_stats.json"
+
+# 复杂性检测配置（新增）
+complexity_detection:
+  enabled: true
+  description: "基于时间参数数量的查询复杂性检测"
+  
+  # 时间复杂性检测
+  time_complexity:
+    enabled: true
+    threshold: 2  # 时间参数≥2个判定为复杂查询
+    description: "检测到2个或以上时间参数时，判定为复杂查询并路由到LLM"
+    
+  # 复杂查询处理策略
+  complex_query_handling:
+    route_to_llm: true  # 复杂查询直接路由到LLM兜底
+    bypass_api: true    # 跳过API调用
+    enable_logging: true # 记录复杂查询日志
+    
+  # 调试配置
+  debug_settings:
+    log_detection_details: true
+    log_parameter_count: true
+
+# 对比时间智能恢复配置（优化版）
+contrast_time_recovery:
+  enabled: true
+  
+  # 严格匹配规则（仅支持环比、同比）
+  strict_matching:
+    enabled: true
+    allowed_keywords: ["环比", "同比"]  # 严格限制为2个关键词
+    description: "仅支持明确的环比、同比关键词，提高匹配准确性"
+    
+  # 规则推断配置
+  rule_based_inference:
+    enable_absolute_time_inference: true
+    enable_relative_time_inference: false  # 关闭相对时间推断，避免歧义
+    
+    # 绝对时间推断规则（仅支持绝对格式）
+    absolute_time_rules:
+      supported_formats:
+        - "YYYY年MM月"
+        - "YYYY年"
+        - "YYYY-MM"
+        - "YYYY"
+      month_rollback_strategy: "previous_month"  # 上个月
+      year_rollback_strategy: "previous_year"    # 去年同期
+      
+  # LLM分析配置
+  llm_analysis:
+    enabled: true
+    model_timeout: 10
+    max_retry: 2
+    
+    # 对比类型检测关键词（精简版）
+    comparison_type_keywords:
+      环比: ["环比"]
+      同比: ["同比"]  # 移除"同期"避免歧义
+      
+  # 兜底策略配置
+  fallback_strategy:
+    route_to_sql_on_failure: true
+    default_contrast_periods:
+      环比:
+        月份查询: "上月"
+        年份查询: "上年"
+      同比:
+        任何查询: "去年同期"
+
+# 统一LLM兜底机制配置
+unified_llm_fallback:
+  enabled: true
+  description: "统一的LLM兜底机制，处理所有类型查询的参数问题和错误恢复"
+  
+  # 全局设置
+  global_settings:
+    timeout_seconds: 10
+    max_retry: 2
+    confidence_threshold: 0.6
+    debug_mode: true
+  
+  # 兜底类型配置
+  fallback_types:
+    # 时间解析兜底
+    time_parsing:
+      enabled: true
+      priority: 1
+      success_threshold: 0.7
+      description: "处理时间参数解析失败的情况"
+    
+    # 对比时间恢复兜底
+    contrast_time_recovery:
+      enabled: true
+      priority: 1
+      success_threshold: 0.8
+      description: "处理对比查询中对比时间缺失的情况"
+    
+    # 参数补充兜底
+    parameter_supplement:
+      enabled: true
+      priority: 2
+      success_threshold: 0.8
+      description: "补充缺失的查询参数"
+    
+    # API错误恢复兜底
+    api_error_recovery:
+      enabled: true
+      priority: 3
+      success_threshold: 0.6
+      description: "处理API调用错误的恢复"
+    
+    # 结果验证兜底
+    result_validation:
+      enabled: true
+      priority: 4
+      success_threshold: 0.5
+      description: "验证API返回结果的质量"
+
+# 系统配置
+system:
+  version: "1.0.0"
+  config_version: "1.0.0"
+  last_updated: "2025-07-21"
+  
+  # 热更新配置
+  hot_reload:
+    enabled: true
+    watch_files:
+      - "config/routing_config.yaml"
+      - "config/geo_mappings.json"
+    reload_interval_seconds: 30
